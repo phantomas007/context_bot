@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Блог{% endblock %}
+
+{% block body %}
+    <h1>Блог</h1>
+
+    {% for post in posts %}
+        <article>
+            <h2>
+                <a href="{{ path('blog_show', {slug: post.slug}) }}">
+                    {{ post.title }}
+                </a>
+            </h2>
+            <p>{{ post.content|slice(0, 200) ~ '...' }}</p>
+            <p>
+                Категория:
+                <a href="{{ path('blog_category', {slug: post.category.slug}) }}">
+                    {{ post.category.name }}
+                </a>
+            </p>
+        </article>
+        <hr>
+    {% else %}
+        <p>Постов пока нет.</p>
+    {% endfor %}
+{% endblock %}
+

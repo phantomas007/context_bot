@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Категория {{ category.name }}{% endblock %}
+
+{% block body %}
+    <h1>Категория: {{ category.name }}</h1>
+
+    {% for post in posts %}
+        <article>
+            <h2>
+                <a href="{{ path('blog_show', {slug: post.slug}) }}">
+                    {{ post.title }}
+                </a>
+            </h2>
+            <p>{{ post.content|slice(0, 200) ~ '...' }}</p>
+        </article>
+        <hr>
+    {% else %}
+        <p>В этой категории пока нет постов.</p>
+    {% endfor %}
+{% endblock %}
+

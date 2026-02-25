@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Посты{% endblock %}
+
+{% block body %}
+    <h1>Посты</h1>
+
+    <p>
+        <a href="{{ path('admin_post_new') }}">Создать пост</a>
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Заголовок</th>
+            <th>Категория</th>
+            <th>Опубликован</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for post in posts %}
+            <tr>
+                <td>{{ post.id }}</td>
+                <td>{{ post.title }}</td>
+                <td>{{ post.category.name }}</td>
+                <td>{{ post.published ? 'Да' : 'Нет' }}</td>
+                <td>
+                    <a href="{{ path('admin_post_edit', {id: post.id}) }}">Редактировать</a>
+                    <form action="{{ path('admin_post_delete', {id: post.id}) }}" method="post" style="display:inline">
+                        <input type="hidden" name="_token" value="{{ csrf_token('delete_post_' ~ post.id) }}">
+                        <button type="submit">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+

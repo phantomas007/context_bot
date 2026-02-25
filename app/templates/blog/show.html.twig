@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block body %}
+    <article>
+        <h1>{{ post.title }}</h1>
+        <p>Категория:
+            <a href="{{ path('blog_category', {slug: post.category.slug}) }}">
+                {{ post.category.name }}
+            </a>
+        </p>
+        <p>{{ post.content|nl2br }}</p>
+    </article>
+{% endblock %}
+

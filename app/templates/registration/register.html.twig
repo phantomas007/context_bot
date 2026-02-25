@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Регистрация администратора{% endblock %}
+
+{% block body %}
+    <h1>Регистрация администратора</h1>
+
+    <form method="post">
+        <label for="name">Имя</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="password">Пароль</label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit">Зарегистрироваться</button>
+    </form>
+{% endblock %}
+
