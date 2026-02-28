@@ -23,7 +23,7 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
-            echo "▶ [1/5] git pull...dd"
+            echo "▶ [1/5] git pull..."
             git pull origin main
 
             echo "▶ [2/5] Сборка образа PHP..."
