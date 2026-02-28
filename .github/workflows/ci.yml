@@ -53,13 +53,22 @@ jobs:
         working-directory: app
         run: composer install --no-interaction --prefer-dist --no-scripts
 
+      - name: Diagnose environment
+        working-directory: app
+        run: |
+          echo "=== PHP ===" && php -v
+          echo "=== .env ===" && cat .env
+          echo "=== .env.local ===" && cat .env.local
+          echo "=== vendor exists ===" && ls vendor | head -3
+          echo "=== MariaDB ping ===" && mariadb -uci_user -pci_password -h127.0.0.1 blog_ci -e "SELECT 1" || echo "DB FAIL"
+
       - name: Warmup DI container (required by PHPStan)
         working-directory: app
         env:
           APP_ENV: dev
           APP_DEBUG: "1"
           DATABASE_URL: "mysql://ci_user:ci_password@127.0.0.1:3306/blog_ci?serverVersion=11.3.2-MariaDB&charset=utf8mb4"
-        run: php bin/console cache:warmup -vvv
+        run: php bin/console cache:warmup -vvv 2>&1
 
       - name: PHP CS Fixer (dry-run)
         working-directory: app
