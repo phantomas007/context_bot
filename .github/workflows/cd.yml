@@ -3,6 +3,7 @@ name: CD
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -22,16 +23,19 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
-            echo "▶ [1/4] git pull..."
+            echo "▶ [1/5] git pull..."
             git pull origin main
 
-            echo "▶ [2/4] Сборка образа PHP..."
+            echo "▶ [2/5] Сборка образа PHP..."
             docker compose build php
 
-            echo "▶ [3/4] Перезапуск контейнеров..."
+            echo "▶ [3/5] Перезапуск контейнеров..."
             docker compose up -d
 
-            echo "▶ [4/4] Миграции + прогрев кеша..."
+            echo "▶ [4/5] Установка зависимостей Composer..."
+            make composer-install ENV=prod
+
+            echo "▶ [5/5] Миграции + прогрев кеша..."
             make migrate ENV=prod
             make console CMD="cache:warmup" ENV=prod
 

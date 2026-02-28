@@ -22,7 +22,7 @@ BOLD   = \033[1m
 RESET  = \033[0m
 
 .PHONY: help run stop restart db-reset \
-        console migrate fixtures cache-clear \
+        composer-install console migrate fixtures cache-clear \
         cs-check cs-fix phpstan lint test \
         _wait-db
 
@@ -119,6 +119,13 @@ restart: ## Перезапустить PHP-контейнер
 	@echo "$(GREEN)  ✔ Готово$(RESET)"
 
 # ─── Symfony ──────────────────────────────────────────────────────────────────
+
+composer-install: ## Установить зависимости Composer: make composer-install [ENV=prod]
+	@echo "$(CYAN)▶ composer install [APP_ENV=$(SYMFONY_ENV)]...$(RESET)"
+	@docker compose exec -w /var/www/html/app php \
+	  composer install \
+	  $(if $(filter prod,$(ENV)),--no-dev --optimize-autoloader,)
+	@echo "$(GREEN)  ✔ Зависимости установлены$(RESET)"
 
 console: ## Выполнить команду Symfony: make console CMD="cache:clear" [ENV=...]
 	@$(PHP_ENV) bin/console $(CMD)
