@@ -122,9 +122,11 @@ restart: ## Перезапустить PHP-контейнер
 
 composer-install: ## Установить зависимости Composer: make composer-install [ENV=prod]
 	@echo "$(CYAN)▶ composer install [APP_ENV=$(SYMFONY_ENV)]...$(RESET)"
-	@docker compose exec -w /var/www/html/app php \
-	  composer install \
-	  $(if $(filter prod,$(ENV)),--no-dev --optimize-autoloader,)
+	@docker compose exec -w /var/www/html/app \
+	  -e APP_ENV=$(SYMFONY_ENV) -e APP_DEBUG=$(APP_DEBUG) \
+	  php composer install \
+	  $(if $(filter prod,$(ENV)),--no-dev --optimize-autoloader,) \
+	  --no-scripts
 	@echo "$(GREEN)  ✔ Зависимости установлены$(RESET)"
 
 console: ## Выполнить команду Symfony: make console CMD="cache:clear" [ENV=...]
