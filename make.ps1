@@ -27,8 +27,7 @@ $IS_PROD    = ($ENV -eq "prod")
 $APP_ENV    = if ($IS_PROD) { "prod" } else { "dev" }
 $APP_DEBUG  = if ($IS_PROD) { "0"    } else { "1"   }
 
-$PHP_CONTAINER = "tg_bot-php-1"
-$EXEC_BASE = "docker exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app $PHP_CONTAINER"
+$EXEC_BASE = "docker compose exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app php"
 
 # ─── Вспомогательные функции ──────────────────────────────────────────────────
 function Exec-Docker {
@@ -38,13 +37,13 @@ function Exec-Docker {
 }
 
 function Is-ContainerRunning {
-    $status = docker inspect --format "{{.State.Running}}" $PHP_CONTAINER 2>$null
-    return ($status -eq "true")
+    $status = docker compose ps -q php 2>$null
+    return ($null -ne $status -and $status -ne "")
 }
 
 function Is-ImageBuilt {
-    $images = docker images --format "{{.Repository}}" 2>$null
-    return ($images -match "tg_bot")
+    $images = docker compose images --format json 2>$null
+    return ($null -ne $images -and $images -ne "")
 }
 
 # ─── Команды ──────────────────────────────────────────────────────────────────
@@ -185,7 +184,7 @@ function Cmd-Phpstan {
 
 function Cmd-Lint {
     Write-Step "Запускаю PHP CS Fixer (dry-run)..."
-    $csResult = docker exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app $PHP_CONTAINER composer cs-check 2>&1
+    $csResult = docker compose exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app php composer cs-check 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host $csResult
         Write-Fail "Нарушения стиля. Запустите: .\make cs-fix"
@@ -193,7 +192,7 @@ function Cmd-Lint {
     Write-Ok "CS Fixer: OK"
 
     Write-Step "Запускаю PHPStan..."
-    $stanResult = docker exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app $PHP_CONTAINER composer phpstan 2>&1
+    $stanResult = docker compose exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app php composer phpstan 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host $stanResult
         Write-Fail "PHPStan нашёл ошибки"
