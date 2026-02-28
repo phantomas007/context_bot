@@ -1,5 +1,5 @@
-﻿# Docker credentials вЂ” РЅРµ РІ git, СЃРѕРґРµСЂР¶РёС‚ РїР°СЂРѕР»Рё
-.env
+﻿# Docker credentials вЂ” РЅРµ РІ git, СЃРѕРґРµСЂР¶РёС‚ РїР°СЂРѕР»Рё MariaDB
+/.env
 
 # Cursor IDE
 .cursorignore

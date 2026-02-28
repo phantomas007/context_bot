@@ -41,21 +41,26 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/vendor
-          key: composer-${{ hashFiles('app/composer.lock') }}
-          restore-keys: composer-
-
-      - name: Install dependencies
-        working-directory: app
-        run: composer install --no-interaction --prefer-dist
+          key: composer-v2-${{ hashFiles('app/composer.lock') }}
+          restore-keys: composer-v2-
 
       - name: Create .env.local
         working-directory: app
         run: |
           echo 'DATABASE_URL="mysql://ci_user:ci_password@127.0.0.1:3306/blog_ci?serverVersion=11.3.2-MariaDB&charset=utf8mb4"' > .env.local
 
+      - name: Install dependencies
+        working-directory: app
+        run: composer install --no-interaction --prefer-dist --no-scripts
+
       - name: Warmup DI container (required by PHPStan)
         working-directory: app
-        run: php bin/console cache:warmup --env=dev
+        env:
+          APP_ENV: dev
+          APP_DEBUG: "1"
+          DATABASE_URL: "mysql://ci_user:ci_password@127.0.0.1:3306/blog_ci?serverVersion=11.3.2-MariaDB&charset=utf8mb4"
+          DEFAULT_URI: "http://localhost"
+        run: php bin/console cache:warmup 2>&1
 
       - name: PHP CS Fixer (dry-run)
         working-directory: app

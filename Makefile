@@ -1,5 +1,5 @@
-PHP     = docker exec -w /var/www/html/app tg_bot-php-1 php
-BIN     = docker exec -w /var/www/html/app tg_bot-php-1 ./vendor/bin
+PHP     = docker compose exec -w /var/www/html/app php php
+BIN     = docker compose exec -w /var/www/html/app php ./vendor/bin
 COMPOSE = docker compose
 
 # Окружение: local (по умолчанию) | prod
@@ -10,9 +10,9 @@ SYMFONY_ENV = $(if $(filter prod,$(ENV)),prod,dev)
 APP_DEBUG   = $(if $(filter prod,$(ENV)),0,1)
 
 # docker exec с нужным окружением
-PHP_ENV = docker exec -w /var/www/html/app \
+PHP_ENV = docker compose exec -w /var/www/html/app \
             -e APP_ENV=$(SYMFONY_ENV) -e APP_DEBUG=$(APP_DEBUG) \
-            tg_bot-php-1 php
+            php php
 
 GREEN  = \033[0;32m
 YELLOW = \033[0;33m

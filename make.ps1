@@ -27,8 +27,7 @@ $IS_PROD    = ($ENV -eq "prod")
 $APP_ENV    = if ($IS_PROD) { "prod" } else { "dev" }
 $APP_DEBUG  = if ($IS_PROD) { "0"    } else { "1"   }
 
-$PHP_CONTAINER = "tg_bot-php-1"
-$EXEC_BASE = "docker exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app $PHP_CONTAINER"
+$EXEC_BASE = "docker compose exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app php"
 
 # ─── Вспомогательные функции ──────────────────────────────────────────────────
 function Exec-Docker {
@@ -37,14 +36,33 @@ function Exec-Docker {
     if ($LASTEXITCODE -ne 0) { Write-Fail "Команда завершилась с ошибкой: $cmd" }
 }
 
-function Is-ContainerRunning {
-    $status = docker inspect --format "{{.State.Running}}" $PHP_CONTAINER 2>$null
-    return ($status -eq "true")
+function Read-DotEnv {
+    $vars = @{}
+    if (Test-Path ".env") {
+        Get-Content ".env" | ForEach-Object {
+            if ($_ -match "^\s*([^#][^=]*)\s*=\s*(.*)\s*$") {
+                $vars[$Matches[1].Trim()] = $Matches[2].Trim()
+            }
+        }
+    }
+    return $vars
 }
 
-function Is-ImageBuilt {
-    $images = docker images --format "{{.Repository}}" 2>$null
-    return ($images -match "tg_bot")
+function Wait-ForDb {
+    $dotenv  = Read-DotEnv
+    $dbUser  = $dotenv["MARIADB_USER"]
+    $dbPass  = $dotenv["MARIADB_PASSWORD"]
+
+    Write-Step "Жду готовности базы данных..."
+    $i = 0
+    while ($true) {
+        $null = docker compose exec -T db mariadb -u"$dbUser" -p"$dbPass" -e "SELECT 1" 2>&1
+        if ($LASTEXITCODE -eq 0) { Write-Ok "База данных готова"; break }
+        $i++
+        if ($i -ge 30) { Write-Fail "БД не ответила за 30 секунд" }
+        Write-Host "    Ожидание БД... ($i/30)`r" -NoNewline -ForegroundColor Yellow
+        Start-Sleep -Seconds 1
+    }
 }
 
 # ─── Команды ──────────────────────────────────────────────────────────────────
@@ -62,22 +80,23 @@ function Cmd-Run {
         }
     }
 
-    if (Is-ContainerRunning) {
-        Write-Info "Контейнеры уже запущены — пропускаю сборку"
-    } else {
-        if (Is-ImageBuilt) {
-            Write-Step "Образы найдены — запускаю контейнеры"
-            docker compose up -d
-            if ($LASTEXITCODE -ne 0) { Write-Fail "docker compose up завершился с ошибкой" }
-        } else {
-            Write-Step "Собираю образы и запускаю контейнеры"
-            docker compose up -d --build
-            if ($LASTEXITCODE -ne 0) { Write-Fail "docker compose up --build завершился с ошибкой" }
-        }
-        Write-Step "Жду готовности PHP-контейнера..."
-        Start-Sleep -Seconds 3
-    }
+    # Передаём APP_ENV и APP_DEBUG в docker compose через переменные окружения процесса.
+    # docker compose читает их при подстановке ${APP_ENV:-dev} в docker-compose.yml
+    # и пересоздаёт контейнер если значения изменились (local→prod или prod→local).
+    $env:APP_ENV   = $APP_ENV
+    $env:APP_DEBUG = $APP_DEBUG
+
+    Write-Step "Сборка образов (только изменённые)..."
+    docker compose build
+    if ($LASTEXITCODE -ne 0) { Write-Fail "docker compose build завершился с ошибкой" }
+    Write-Ok "Образы актуальны"
+
+    Write-Step "Запуск контейнеров [APP_ENV=$APP_ENV, APP_DEBUG=$APP_DEBUG]..."
+    docker compose up -d
+    if ($LASTEXITCODE -ne 0) { Write-Fail "docker compose up завершился с ошибкой" }
     Write-Ok "Контейнеры запущены"
+
+    Wait-ForDb
 
     Write-Step "Устанавливаю зависимости Composer"
     if ($IS_PROD) {
@@ -88,7 +107,7 @@ function Cmd-Run {
     Write-Ok "Зависимости установлены"
 
     Write-Step "Применяю миграции"
-    Exec-Docker "php bin/console doctrine:migrations:migrate --no-interaction"
+    Exec-Docker "php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
     Write-Ok "Миграции выполнены"
 
     if ($IS_PROD) {
@@ -118,7 +137,7 @@ function Cmd-Run {
 
 function Cmd-Stop {
     Write-Title "Остановка контейнеров"
-    docker compose down
+    docker compose stop
     Write-Ok "Контейнеры остановлены"
 }
 
@@ -138,7 +157,7 @@ function Cmd-Restart {
 
 function Cmd-Migrate {
     Write-Title "Миграции [ENV=$ENV]"
-    Exec-Docker "php bin/console doctrine:migrations:migrate --no-interaction"
+    Exec-Docker "php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
     Write-Ok "Миграции выполнены"
 }
 
@@ -185,7 +204,7 @@ function Cmd-Phpstan {
 
 function Cmd-Lint {
     Write-Step "Запускаю PHP CS Fixer (dry-run)..."
-    $csResult = docker exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app $PHP_CONTAINER composer cs-check 2>&1
+    $csResult = docker compose exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app php composer cs-check 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host $csResult
         Write-Fail "Нарушения стиля. Запустите: .\make cs-fix"
@@ -193,7 +212,7 @@ function Cmd-Lint {
     Write-Ok "CS Fixer: OK"
 
     Write-Step "Запускаю PHPStan..."
-    $stanResult = docker exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app $PHP_CONTAINER composer phpstan 2>&1
+    $stanResult = docker compose exec -e APP_ENV=$APP_ENV -e APP_DEBUG=$APP_DEBUG -w /var/www/html/app php composer phpstan 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host $stanResult
         Write-Fail "PHPStan нашёл ошибки"
