@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name _;
+    server_name ${NGINX_SERVER_NAME};
 
     root /var/www/html/app/public;
     index index.php index.html;
