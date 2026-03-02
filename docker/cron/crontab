@@ -1,0 +1,18 @@
+# Symfony scheduled commands
+# Формат: minute hour day month weekday command
+#
+# Логи пишутся в stdout контейнера через /proc/1/fd/1
+#
+# ┌─ минута    (0-59)
+# │ ┌─ час      (0-23)
+# │ │ ┌─ день   (1-31)
+# │ │ │ ┌─ месяц (1-12)
+# │ │ │ │ ┌─ день недели (0-6, 0=вс)
+# │ │ │ │ │
+# * * * * * php /var/www/html/app/bin/console <command> >> /proc/1/fd/1 2>&1
+
+# Пример: очистка кеша каждую ночь в 3:00
+# 0 3 * * * php /var/www/html/app/bin/console cache:pool:clear cache.app >> /proc/1/fd/1 2>&1
+
+# Пример: запуск своей команды каждые 5 минут
+# */5 * * * * php /var/www/html/app/bin/console app:my-command >> /proc/1/fd/1 2>&1

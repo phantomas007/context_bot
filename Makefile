@@ -22,7 +22,7 @@ BOLD   = \033[1m
 RESET  = \033[0m
 
 .PHONY: help run stop restart db-reset \
-        composer-install console migrate fixtures cache-clear \
+        composer-install console migrate cache-clear \
         cs-check cs-fix phpstan lint test \
         _wait-db
 
@@ -63,26 +63,36 @@ run: ## Запустить проект: make run [ENV=local|prod]
 	@echo "$(GREEN)  ✔ Образы актуальны$(RESET)"
 	@echo ""
 
-	@echo "$(CYAN)▶ [2/5] Запуск контейнеров [APP_ENV=$(SYMFONY_ENV), APP_DEBUG=$(APP_DEBUG)]...$(RESET)"
+	@echo "$(CYAN)▶ [2/6] Запуск контейнеров [APP_ENV=$(SYMFONY_ENV), APP_DEBUG=$(APP_DEBUG)]...$(RESET)"
 	@APP_ENV=$(SYMFONY_ENV) APP_DEBUG=$(APP_DEBUG) $(COMPOSE) up -d
 	@echo "$(GREEN)  ✔ Контейнеры запущены$(RESET)"
 	@echo ""
 
-	@echo "$(CYAN)▶ [3/5] Ожидание готовности базы данных...$(RESET)"
+	@echo "$(CYAN)▶ [3/6] Установка зависимостей Composer...$(RESET)"
+	@docker compose exec -w /var/www/html/app \
+	  -e APP_ENV=$(SYMFONY_ENV) -e APP_DEBUG=$(APP_DEBUG) \
+	  php composer install \
+	  $(if $(filter prod,$(ENV)),--no-dev --optimize-autoloader,) \
+	  --no-interaction --no-scripts
+	@echo "$(GREEN)  ✔ Зависимости установлены$(RESET)"
+	@echo ""
+
+	@echo "$(CYAN)▶ [4/6] Ожидание готовности базы данных...$(RESET)"
 	@$(MAKE) _wait-db
 	@echo ""
 
-	@echo "$(CYAN)▶ [4/5] Применение миграций...$(RESET)"
+	@echo "$(CYAN)▶ [5/6] Применение миграций...$(RESET)"
 	@$(PHP_ENV) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 	@echo "$(GREEN)  ✔ Миграции актуальны$(RESET)"
 	@echo ""
 
-	@if [ "$(ENV)" != "prod" ]; then \
-		echo "$(CYAN)▶ [5/5] Загрузка фикстур...$(RESET)"; \
-		$(PHP_ENV) bin/console doctrine:fixtures:load --no-interaction; \
-		echo "$(GREEN)  ✔ Фикстуры загружены$(RESET)"; \
-	else \
-		echo "$(CYAN)▶ [5/5] Прогрев кеша (prod)...$(RESET)"; \
+	@echo "$(CYAN)▶ [6/6] Очистка кеша...$(RESET)"
+	@$(PHP_ENV) bin/console cache:clear
+	@echo "$(GREEN)  ✔ Кеш очищен$(RESET)"
+	@echo ""
+
+	@if [ "$(ENV)" = "prod" ]; then \
+		echo "$(CYAN)▶ Прогрев кеша (prod)...$(RESET)"; \
 		$(PHP_ENV) bin/console cache:warmup; \
 		echo "$(GREEN)  ✔ Кеш прогрет$(RESET)"; \
 	fi
@@ -137,13 +147,6 @@ migrate: ## Применить миграции: make migrate [ENV=...]
 	@$(PHP_ENV) bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 	@echo "$(GREEN)  ✔ Готово$(RESET)"
 
-fixtures: ## Загрузить фикстуры (только local)
-	@if [ "$(ENV)" = "prod" ]; then \
-		echo "$(RED)  ✘ Фикстуры недоступны в prod-окружении$(RESET)"; exit 1; \
-	fi
-	@echo "$(CYAN)▶ Загрузка фикстур...$(RESET)"
-	@$(PHP_ENV) bin/console doctrine:fixtures:load --no-interaction
-	@echo "$(GREEN)  ✔ Готово$(RESET)"
 
 cache-clear: ## Очистить кеш Symfony: make cache-clear [ENV=...]
 	@echo "$(CYAN)▶ Очистка кеша [APP_ENV=$(SYMFONY_ENV)]...$(RESET)"
@@ -185,9 +188,7 @@ test: ## Запустить тесты PHPUnit (когда появятся)
 
 _wait-db:
 	@i=0; \
-	until docker exec tg_bot-db-1 mariadb -u$${MARIADB_USER:-tg_bot_user} \
-	        -p$${MARIADB_PASSWORD:-secret_password} \
-	        -e "SELECT 1" >/dev/null 2>&1; do \
+	until $(COMPOSE) exec -T db pg_isready -U "$${POSTGRES_USER:-blog_user}" >/dev/null 2>&1; do \
 	  i=$$((i+1)); \
 	  if [ $$i -ge 30 ]; then \
 	    echo "$(RED)  ✘ БД не ответила за 30 секунд$(RESET)"; exit 1; \

@@ -49,14 +49,13 @@ function Read-DotEnv {
 }
 
 function Wait-ForDb {
-    $dotenv  = Read-DotEnv
-    $dbUser  = $dotenv["MARIADB_USER"]
-    $dbPass  = $dotenv["MARIADB_PASSWORD"]
+    $dotenv = Read-DotEnv
+    $pgUser = $dotenv["POSTGRES_USER"]
 
     Write-Step "Жду готовности базы данных..."
     $i = 0
     while ($true) {
-        $null = docker compose exec -T db mariadb -u"$dbUser" -p"$dbPass" -e "SELECT 1" 2>&1
+        $null = docker compose exec -T db pg_isready -U "$pgUser" 2>&1
         if ($LASTEXITCODE -eq 0) { Write-Ok "База данных готова"; break }
         $i++
         if ($i -ge 30) { Write-Fail "БД не ответила за 30 секунд" }
@@ -110,18 +109,14 @@ function Cmd-Run {
     Exec-Docker "php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
     Write-Ok "Миграции выполнены"
 
+    Write-Step "Очищаю кеш"
+    Exec-Docker "php bin/console cache:clear"
+    Write-Ok "Кеш очищен"
+
     if ($IS_PROD) {
         Write-Step "Прогреваю кеш (prod)"
         Exec-Docker "php bin/console cache:warmup"
         Write-Ok "Кеш прогрет"
-    } else {
-        Write-Step "Загружаю фикстуры"
-        Exec-Docker "php bin/console doctrine:fixtures:load --no-interaction"
-        Write-Ok "Фикстуры загружены"
-
-        Write-Step "Очищаю кеш"
-        Exec-Docker "php bin/console cache:clear"
-        Write-Ok "Кеш очищен"
     }
 
     if (-not $IS_PROD) {
@@ -161,14 +156,6 @@ function Cmd-Migrate {
     Write-Ok "Миграции выполнены"
 }
 
-function Cmd-Fixtures {
-    if ($IS_PROD) {
-        Write-Fail "Фикстуры недоступны в prod-окружении"
-    }
-    Write-Title "Загрузка фикстур [ENV=$ENV]"
-    Exec-Docker "php bin/console doctrine:fixtures:load --no-interaction"
-    Write-Ok "Фикстуры загружены"
-}
 
 function Cmd-CacheClear {
     Write-Title "Очистка кеша [ENV=$ENV]"
@@ -245,7 +232,6 @@ function Cmd-Help {
     Write-Host "  Symfony:" -ForegroundColor Yellow
     $cmds2 = @(
         @{ name = "migrate";      desc = "Применить миграции" },
-        @{ name = "fixtures";     desc = "Загрузить фикстуры (только local)" },
         @{ name = "cache-clear";  desc = "Очистить кеш" },
         @{ name = "console";      desc = "Консольная команда: .\make console -CMD 'cache:clear'" }
     )
@@ -282,7 +268,6 @@ switch ($Command) {
     "restart"     { Cmd-Restart }
     "db-reset"    { Cmd-DbReset }
     "migrate"     { Cmd-Migrate }
-    "fixtures"    { Cmd-Fixtures }
     "cache-clear" { Cmd-CacheClear }
     "console"     { Cmd-Console }
     "cs-check"    { Cmd-CsCheck }
