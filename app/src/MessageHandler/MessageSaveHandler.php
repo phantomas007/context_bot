@@ -36,28 +36,28 @@ final class MessageSaveHandler
         $update = $envelope->update;
 
         $telegramMessage = $update['message'] ?? null;
-        if (!is_array($telegramMessage)) {
+        if (!\is_array($telegramMessage)) {
             return;
         }
 
         $chat = $telegramMessage['chat'] ?? null;
-        if (!is_array($chat) || !in_array($chat['type'] ?? '', ['group', 'supergroup'], true)) {
+        if (!\is_array($chat) || !\in_array($chat['type'] ?? '', ['group', 'supergroup'], true)) {
             return;
         }
 
         $text = $telegramMessage['text'] ?? null;
-        if (!is_string($text) || $text === '') {
+        if (!\is_string($text) || '' === $text) {
             return;
         }
 
         $from = $telegramMessage['from'] ?? null;
         $telegramChatId = (int) $chat['id'];
         $telegramMessageId = (int) $telegramMessage['message_id'];
-        $messageDate = new \DateTimeImmutable('@' . (int) $telegramMessage['date']);
+        $messageDate = new \DateTimeImmutable('@'.(int) $telegramMessage['date']);
 
         $group = $this->upsertGroup($telegramChatId, $chat['title'] ?? null);
 
-        if (is_array($from) && !($from['is_bot'] ?? false)) {
+        if (\is_array($from) && !($from['is_bot'] ?? false)) {
             $user = $this->upsertUser($from);
             $this->upsertUserGroup($user, $group);
         }
@@ -65,8 +65,8 @@ final class MessageSaveHandler
         $saved = $this->saveMessage(
             telegramMessageId: $telegramMessageId,
             group: $group,
-            telegramUserId: is_array($from) ? (int) $from['id'] : null,
-            username: is_array($from) ? ($from['username'] ?? $from['first_name'] ?? null) : null,
+            telegramUserId: \is_array($from) ? (int) $from['id'] : null,
+            username: \is_array($from) ? ($from['username'] ?? $from['first_name'] ?? null) : null,
             text: $text,
             createdAt: $messageDate,
         );
@@ -80,7 +80,7 @@ final class MessageSaveHandler
     {
         $group = $this->groupRepository->findOneBy(['telegramChatId' => $telegramChatId]);
 
-        if ($group === null) {
+        if (null === $group) {
             $group = new TelegramGroup(telegramChatId: $telegramChatId, title: $title);
             $this->em->persist($group);
             $this->em->flush();
@@ -88,7 +88,7 @@ final class MessageSaveHandler
             return $group;
         }
 
-        if ($title !== null && $group->getTitle() !== $title) {
+        if (null !== $title && $group->getTitle() !== $title) {
             $group->updateTitle($title);
             $this->em->flush();
         }
@@ -102,7 +102,7 @@ final class MessageSaveHandler
         $telegramUserId = (int) $from['id'];
         $user = $this->userRepository->findOneBy(['telegramUserId' => $telegramUserId]);
 
-        if ($user === null) {
+        if (null === $user) {
             $user = new User(
                 telegramUserId: $telegramUserId,
                 username: $from['username'] ?? null,
@@ -119,7 +119,7 @@ final class MessageSaveHandler
     {
         $existing = $this->userGroupRepository->findOneBy(['user' => $user, 'group' => $group]);
 
-        if ($existing === null) {
+        if (null === $existing) {
             $this->em->persist(new UserGroup($user, $group));
             $this->em->flush();
         }
@@ -138,7 +138,7 @@ final class MessageSaveHandler
             'group' => $group,
         ]);
 
-        if ($existing !== null) {
+        if (null !== $existing) {
             return false;
         }
 
@@ -159,7 +159,7 @@ final class MessageSaveHandler
     {
         $count = $this->messageRepository->countUnsummarized($group);
 
-        if ($count > 0 && $count % 100 === 0) {
+        if ($count > 0 && 0 === $count % 100) {
             $this->bus->dispatch(new SummaryJobMessage($group->getId() ?? 0));
         }
     }

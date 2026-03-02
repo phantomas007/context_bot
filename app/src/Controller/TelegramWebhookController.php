@@ -28,7 +28,7 @@ class TelegramWebhookController
         }
 
         $data = json_decode($request->getContent(), true);
-        if (!is_array($data)) {
+        if (!\is_array($data)) {
             return new JsonResponse(['ok' => true]);
         }
 
@@ -39,7 +39,7 @@ class TelegramWebhookController
 
     private function isValidRequest(Request $request): bool
     {
-        if ($this->webhookSecret === '') {
+        if ('' === $this->webhookSecret) {
             return true;
         }
 
