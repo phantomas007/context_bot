@@ -5,101 +5,75 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'blog_user')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+#[ORM\Table(name: 'users')]
+class User
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: 'bigint')]
     private ?int $id = null;
 
-    #[ORM\Column(length: 180, unique: true)]
-    private string $email;
+    #[ORM\Column(type: 'bigint', unique: true)]
+    private int $telegramUserId;
 
-    /** @var list<string> */
-    #[ORM\Column(type: 'json')]
-    private array $roles = [];
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $username;
 
-    #[ORM\Column]
-    private string $password;
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $firstName;
 
-    #[ORM\Column(length: 100)]
-    private string $name;
+    #[ORM\Column(type: 'datetime_immutable')]
+    private \DateTimeImmutable $registeredAt;
+
+    /** @var Collection<int, UserGroup> */
+    #[ORM\OneToMany(targetEntity: UserGroup::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
+    private Collection $userGroups;
+
+    public function __construct(
+        int $telegramUserId,
+        ?string $username = null,
+        ?string $firstName = null,
+    ) {
+        $this->telegramUserId = $telegramUserId;
+        $this->username = $username;
+        $this->firstName = $firstName;
+        $this->registeredAt = new \DateTimeImmutable();
+        $this->userGroups = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getEmail(): string
+    public function getTelegramUserId(): int
     {
-        return $this->email;
+        return $this->telegramUserId;
     }
 
-    public function setEmail(string $email): self
+    public function getUsername(): ?string
     {
-        $this->email = $email;
-
-        return $this;
+        return $this->username;
     }
 
-    public function getUserIdentifier(): string
+    public function getFirstName(): ?string
     {
-        return $this->email;
+        return $this->firstName;
     }
 
-    /**
-     * @return list<string>
-     */
-    public function getRoles(): array
+    public function getRegisteredAt(): \DateTimeImmutable
     {
-        $roles = $this->roles;
-        $roles[] = 'ROLE_USER';
-
-        /* @var list<string> */
-        return array_values(array_unique($roles));
+        return $this->registeredAt;
     }
 
-    /**
-     * @param list<string> $roles
-     */
-    public function setRoles(array $roles): self
+    /** @return Collection<int, UserGroup> */
+    public function getUserGroups(): Collection
     {
-        $this->roles = $roles;
-
-        return $this;
-    }
-
-    public function getPassword(): string
-    {
-        return $this->password;
-    }
-
-    public function setPassword(string $password): self
-    {
-        $this->password = $password;
-
-        return $this;
-    }
-
-    public function eraseCredentials(): void
-    {
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function setName(string $name): self
-    {
-        $this->name = $name;
-
-        return $this;
+        return $this->userGroups;
     }
 }

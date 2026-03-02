@@ -1,6 +1,10 @@
 server {
     listen 80;
-    server_name _;
+    listen 443 ssl;
+    server_name ${NGINX_SERVER_NAME};
+
+    ssl_certificate     /etc/nginx/ssl/nginx.crt;
+    ssl_certificate_key /etc/nginx/ssl/nginx.key;
 
     root /var/www/html/app/public;
     index index.php index.html;

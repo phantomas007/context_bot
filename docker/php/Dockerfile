@@ -9,14 +9,18 @@ RUN apk add --no-cache --virtual .build-deps \
         libzip-dev \
         icu-dev \
         oniguruma-dev \
+        postgresql-dev \
+        rabbitmq-c-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
-        pdo_mysql \
-        mysqli \
+        pdo_pgsql \
+        pgsql \
         gd \
         intl \
         mbstring \
         zip \
+    && pecl install amqp \
+    && docker-php-ext-enable amqp \
     && apk del .build-deps \
     && apk add --no-cache \
         bash \
@@ -26,7 +30,10 @@ RUN apk add --no-cache --virtual .build-deps \
         libzip \
         libpng \
         libjpeg-turbo \
-        freetype
+        freetype \
+        libpq \
+        rabbitmq-c \
+        supervisor
 
 RUN curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php \
     && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer \
