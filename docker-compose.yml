@@ -107,9 +107,28 @@ services:
     networks:
       - backend
 
+  ollama:
+    image: ollama/ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - backend
+    # Для GPU (NVIDIA) раскомментировать:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
 volumes:
   db_data:
   rabbitmq_data:
+  ollama_data:
 
 networks:
   backend:
